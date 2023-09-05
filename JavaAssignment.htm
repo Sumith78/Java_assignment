@@ -1,0 +1,389 @@
+<!DOCTYPE <!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]>      <html class="no-js"> <!--<![endif]-->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+        
+        <script src="" async defer></script>
+    </body>
+</html>>
+<html>
+<head>
+    <title>API Integration</title>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="login_id">Email:</label>
+            <input type="text" id="login_id" name="login_id" required><br>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required><br>
+
+            <button type="button" onclick="authenticateUser()">Login</button>
+        </form>
+    </div>
+
+    <!-- Customer List Screen -->
+    <div id="customerListScreen" style="display: none;">
+        <h2>Customer List</h2>
+        <button onclick="loadCustomerList()">Refresh</button>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Street</th>
+                    <th>Address</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="customerTableBody">
+                <!-- Customer data will be displayed here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Customer Operations Screen -->
+    <div id="customerOperationsScreen" style="display: none;">
+        <h2>Customer Operations</h2>
+        <form id="customerForm">
+            <input type="hidden" id="customerUuid" name="uuid">
+
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" required><br>
+
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" required><br>
+
+            <label for="street">Street:</label>
+            <input type="text" id="street" name="street"><br>
+
+            <label for="address">Address:</label>
+            <input type="text" id="address" name="address"><br>
+
+            <label for="city">City:</label>
+            <input type="text" id="city" name="city"><br>
+
+            <label for="state">State:</label>
+            <input type="text" id="state" name="state"><br>
+
+            <label for="email">Email:</label>
+            <input type="text" id="email" name="email"><br>
+
+            <label for="phone">Phone:</label>
+            <input type="text" id="phone" name="phone"><br>
+
+            <button type="button" onclick="createOrUpdateCustomer()">Save</button>
+            <button type="button" onclick="deleteCustomer()">Delete</button>
+            <button type="button" onclick="showCustomerList()">Back to List</button>
+        </form>
+    </div>
+
+    <script>
+        let bearerToken = '';
+
+        // JavaScript functions to interact with the APIs
+        function authenticateUser() {
+            // Get user input from the login form
+            const loginId = document.getElementById("login_id").value;
+            const password = document.getElementById("password").value;
+
+            // Prepare the request body
+            const requestBody = {
+                login_id: loginId,
+                password: password
+            };
+
+            // Make the API request to authenticate the user
+            fetch('https://qa2.sunbasedata.com/sunbase/portal/api/assignment_auth.jsp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    // Authentication successful
+                    return response.json();
+                } else if (response.status === 401) {
+                    // Invalid authorization
+                    alert("Authentication failed. Invalid credentials.");
+                    throw new Error("Authentication failed");
+                } else {
+                    // Handle other error cases
+                    alert("An error occurred during authentication.");
+                    throw new Error("Authentication error");
+                }
+            })
+            .then(data => {
+                // Store the received bearer token for further API calls
+                bearerToken = data.token;
+
+                // Hide the login screen and show the customer list screen
+                document.getElementById("loginScreen").style.display = "none";
+                document.getElementById("customerListScreen").style.display = "block";
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        function loadCustomerList() {
+            // Make the API request to get the customer list
+            fetch('https://qa2.sunbasedata.com/sunbase/portal/api/assignment.jsp?cmd=get_customer_list', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${bearerToken}`
+                }
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    // Customer list retrieved successfully
+                    return response.json();
+                } else if (response.status === 401) {
+                    // Invalid authorization
+                    alert("Authentication failed. Please log in again.");
+                    document.getElementById("loginScreen").style.display = "block";
+                    document.getElementById("customerListScreen").style.display = "none";
+                    throw new Error("Authentication failed");
+                } else {
+                    // Handle other error cases
+                    alert("An error occurred while loading the customer list.");
+                    throw new Error("Customer list loading error");
+                }
+            })
+            .then(data => {
+                // Populate the customer table with the retrieved data
+                const customerTableBody = document.getElementById("customerTableBody");
+                customerTableBody.innerHTML = ''; // Clear existing data
+
+                data.forEach(customer => {
+                    const row = customerTableBody.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+                    const cell3 = row.insertCell(2);
+                    const cell4 = row.insertCell(3);
+                    const cell5 = row.insertCell(4);
+                    const cell6 = row.insertCell(5);
+                    const cell7 = row.insertCell(6);
+                    const cell8 = row.insertCell(7);
+                    const cell9 = row.insertCell(8);
+
+                    cell1.innerHTML = customer.first_name;
+                    cell2.innerHTML = customer.last_name;
+                    cell3.innerHTML = customer.street;
+                    cell4.innerHTML = customer.address;
+                    cell5.innerHTML = customer.city;
+                    cell6.innerHTML = customer.state;
+                    cell7.innerHTML = customer.email;
+                    cell8.innerHTML = customer.phone;
+
+                    // Add Edit and Delete buttons for each customer
+                    cell9.innerHTML = `<button onclick="editCustomer('${customer.uuid}')">Edit</button>
+                                        <button onclick="deleteCustomer('${customer.uuid}')">Delete</button>`;
+                });
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        function createOrUpdateCustomer() {
+            // Retrieve customer data from the form fields
+            const uuid = document.getElementById("customerUuid").value;
+            const updatedFirstName = document.getElementById("first_name").value;
+           
+            const updatedLastName = document.getElementById("last_name").value;
+            const street = document.getElementById("street").value;
+            const address = document.getElementById("address").value;
+            const city = document.getElementById("city").value;
+            const state = document.getElementById("state").value;
+            const email = document.getElementById("email").value;
+            const phone = document.getElementById("phone").value;
+
+            // Check if first_name and last_name are provided
+            if (!updatedFirstName || !updatedLastName) {
+                alert("First Name and Last Name are mandatory.");
+                return;
+            }
+
+            // Prepare the request body
+            const requestBody = {
+                first_name: updatedFirstName,
+                last_name: updatedLastName,
+                street: street,
+                address: address,
+                city: city,
+                state: state,
+                email: email,
+                phone: phone
+            };
+
+            // Determine whether to create or update based on the presence of a customer UUID
+            const method = uuid ? 'PUT' : 'POST';
+            const url = uuid ? `https://qa2.sunbasedata.com/sunbase/portal/api/assignment.jsp?cmd=update&uuid=${uuid}` : 'https://qa2.sunbasedata.com/sunbase/portal/api/assignment.jsp?cmd=create';
+
+            // Make the API request to create or update the customer
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${bearerToken}`
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                if (response.status === 201) {
+                    // Customer created successfully
+                    alert("Customer created/updated successfully.");
+                    clearCustomerForm();
+                    loadCustomerList();
+                } else if (response.status === 400) {
+                    // Invalid request or missing parameters
+                    alert("Invalid request or missing parameters. Please check your data.");
+                } else if (response.status === 401) {
+                    // Invalid authorization
+                    alert("Authentication failed. Please log in again.");
+                    document.getElementById("loginScreen").style.display = "block";
+                    document.getElementById("customerListScreen").style.display = "none";
+                    throw new Error("Authentication failed");
+                } else {
+                    // Handle other error cases
+                    alert("An error occurred during customer creation/update.");
+                    throw new Error("Customer creation/update error");
+                }
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        function deleteCustomer(uuid) {
+            if (!confirm("Are you sure you want to delete this customer?")) {
+                return;
+            }
+
+            // Make the API request to delete the customer
+            fetch(`https://qa2.sunbasedata.com/sunbase/portal/api/assignment.jsp?cmd=delete&uuid=${uuid}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${bearerToken}`
+                }
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    // Customer deleted successfully
+                    alert("Customer deleted successfully.");
+                    loadCustomerList();
+                } else if (response.status === 400) {
+                    // UUID not found
+                    alert("UUID not found.");
+                } else if (response.status === 500) {
+                    // Error not deleted
+                    alert("An error occurred while deleting the customer.");
+                } else if (response.status === 401) {
+                    // Invalid authorization
+                    alert("Authentication failed. Please log in again.");
+                    document.getElementById("loginScreen").style.display = "block";
+                    document.getElementById("customerListScreen").style.display = "none";
+                    throw new Error("Authentication failed");
+                } else {
+                    // Handle other error cases
+                    alert("An error occurred during customer deletion.");
+                    throw new Error("Customer deletion error");
+                }
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        function editCustomer(uuid) {
+            // Retrieve customer data by UUID and populate the form for editing
+            fetch(`https://qa2.sunbasedata.com/sunbase/portal/api/assignment.jsp?cmd=get_customer&uuid=${uuid}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${bearerToken}`
+                }
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else if (response.status === 401) {
+                    alert("Authentication failed. Please log in again.");
+                    document.getElementById("loginScreen").style.display = "block";
+                    document.getElementById("customerListScreen").style.display = "none";
+                    throw new Error("Authentication failed");
+                } else {
+                    alert("An error occurred while fetching customer data.");
+                    throw new Error("Customer data fetching error");
+                }
+            })
+            .then(customerData => {
+                // Populate the customer form with the retrieved data
+                document.getElementById("customerUuid").value = customerData.uuid;
+                document.getElementById("first_name").value = customerData.first_name;
+                document.getElementById("last_name").value = customerData.last_name;
+                document.getElementById("street").value = customerData.street;
+                document.getElementById("address").value = customerData.address;
+                document.getElementById("city").value = customerData.city;
+                document.getElementById("state").value = customerData.state;
+                document.getElementById("email").value = customerData.email;
+                document.getElementById("phone").value = customerData.phone;
+
+                // Switch to the customer operations screen
+                showCustomerOperations();
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        }
+
+        function showCustomerOperations() {
+            // Switch to the Customer Operations screen
+            document.getElementById("customerListScreen").style.display = "none";
+            document.getElementById("customerOperationsScreen").style.display = "block";
+        }
+
+        function showCustomerList() {
+            // Switch to the Customer List screen
+            document.getElementById("customerListScreen").style.display = "block";
+            document.getElementById("customerOperationsScreen").style.display = "none";
+        }
+
+        function clearCustomerForm() {
+            // Clear the customer form fields
+            document.getElementById("customerUuid").value = "";
+            document.getElementById("first_name").value = "";
+            document.getElementById("last_name").value = "";
+            document.getElementById("street").value = "";
+            document.getElementById("address").value = "";
+            document.getElementById("city").value = "";
+            document.getElementById("state").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("phone").value = "";
+        }
+    </script>
+</body>
+</html>
